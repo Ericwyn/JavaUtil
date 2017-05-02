@@ -127,29 +127,43 @@ public class FileUtils {
      * @param dirToPath   目标文件夹的路径
      * @return  返回成功与否
      */
-    public static boolean copyDir(String dirFromPath,String dirToPath){
-        File dirFrom=new File(dirFromPath);
-        File dirTo=new File(dirToPath);
-        if(!dirTo.isDirectory()){
-            dirTo.mkdir();
-        }
-        if(!dirFrom.isDirectory()){
-            System.out.println(dirFromPath+"文件夹不存在");
-            return false;
-        }
-        File[] files=dirFrom.listFiles();
-        for (File fileFlag:files){
-            if(fileFlag.isDirectory()){
-                if(!copyDir(fileFlag.getAbsolutePath(), dirFromPath+"/"+fileFlag.getName())){
-                   return false;
+    public static boolean copyDir(String dirFromPath, String dirToPath) {
+        boolean result = false;
+        try {
+            (new File(dirToPath)).mkdirs(); // 如果文件夹不存在 则建立新文件夹
+            File a = new File(dirFromPath);
+            String[] file = a.list();
+            File temp = null;
+            for (int i = 0; i < file.length; i++) {
+                if (dirFromPath.endsWith(File.separator)) {
+                    temp = new File(dirFromPath + file[i]);
+                } else {
+                    temp = new File(dirFromPath + File.separator + file[i]);
                 }
-            }else {
-                if(!copyFile(fileFlag.getAbsolutePath(),dirFromPath+"/"+fileFlag.getName())){
-                    return false;
+
+                if (temp.isFile()) {
+                    FileInputStream input = new FileInputStream(temp);
+                    FileOutputStream output = new FileOutputStream(dirToPath + "/" + (temp.getName()).toString());
+                    byte[] b = new byte[1024 * 5];
+                    int len;
+                    while ((len = input.read(b)) != -1) {
+                        output.write(b, 0, len);
+                    }
+                    output.flush();
+                    output.close();
+                    input.close();
+                }
+                if (temp.isDirectory()) {// 如果是子文件夹
+                    copyDir(dirFromPath + "/" + file[i], dirToPath + "/" + file[i]);
                 }
             }
+            if(new File(dirToPath).exists()){
+                result = true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return true;
+        return result;
     }
 
     public static boolean moveFile(String fileFromPath,String fileToPath){
