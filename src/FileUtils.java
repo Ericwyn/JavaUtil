@@ -6,6 +6,8 @@ import java.nio.channels.FileChannel;
 
 /**
  * 封装文件的增删改，和文件、文件夹的复制，粘贴
+ *
+ * GitHub：https://github.com/Ericwyn/JavaUtil/blob/master/src/FileUtils.java
  * Created by Ericwyn on 17-5-2.
  */
 public class FileUtils {
@@ -39,31 +41,49 @@ public class FileUtils {
     }
 
     /**
-     * 删除空目录
-     * @param dir 将要删除的目录路径
+     * 删除文件
+     * @param filePath  文件路径
      */
-    public static void doDeleteEmptyDir(String dir) {
-        boolean success = (new File(dir)).delete();
+    public static boolean deleteFile(String filePath){
+        boolean success=(new File(filePath)).delete();
+        if(!success){
+            System.out.println("删除文件"+filePath+"失败");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 删除空目录
+     * @param dirPath 将要删除的目录路径
+     */
+    public static void deleteEmptyDir(String dirPath) {
+        boolean success = (new File(dirPath)).delete();
         if (success) {
-            System.out.println("Successfully deleted empty directory: " + dir);
-        } else {
-            System.out.println("Failed to delete empty directory: " + dir);
+//            System.out.println("Successfully deleted empty directory: " + dirPath);
+//        } else {
+            System.out.println("删除空目录" + dirPath +"失败");
         }
     }
 
     /**
      * 递归删除目录下的所有文件及子目录下所有文件
-     * @param dir 将要删除的文件目录
+     * @param dirPath 将要删除的文件目录
      * @return 是否成功删除
      */
-    public static boolean deleteDir(File dir) {
+    public static boolean deleteDir(String dirPath) {
+        File dir=new File(dirPath);
         if (dir.isDirectory()) {
-            String[] children = dir.list();
-            //递归删除目录中的子目录下
-            for (int i=0; i<children.length; i++) {
-                boolean success = deleteDir(new File(dir, children[i]));
-                if (!success) {
-                    return false;
+            File[] files=dir.listFiles();
+            for(File fileFlag:files){
+                if(fileFlag.isDirectory()){
+                    if(!deleteDir(fileFlag.getAbsolutePath())){
+                        return false;
+                    }
+                }else {
+                    if(!deleteFile(fileFlag.getAbsolutePath())){
+                        return false;
+                    }
                 }
             }
         }
@@ -71,29 +91,33 @@ public class FileUtils {
         return dir.delete();
     }
 
+
     /**
      * 使用transferFrom方法对文件进行复制，
      * @param fileFromPath  文件来源路径
      * @param fileToPath    文件复制路径
+     * @return  返回成功与否
      */
-    public static void copyFile(String fileFromPath, String fileToPath){
+    public static boolean copyFile(String fileFromPath, String fileToPath){
         FileChannel inputChannel = null;
         FileChannel outputChannel = null;
         try {
             inputChannel = new FileInputStream(new File(fileFromPath)).getChannel();
             outputChannel = new FileOutputStream(new File(fileToPath)).getChannel();
             outputChannel.transferFrom(inputChannel, 0, inputChannel.size());
-        } catch (IOException ioe){
-            ioe.printStackTrace();
-            System.out.println("复制文件"+fileFromPath+"失败");
-        }finally {
             try {
                 inputChannel.close();
                 outputChannel.close();
+                return true;
             }catch (IOException ioe){
                 ioe.printStackTrace();
                 System.out.println("关闭文件复制流"+fileFromPath+"失败");
+                return false;
             }
+        } catch (IOException ioe){
+            ioe.printStackTrace();
+            System.out.println("复制文件"+fileFromPath+"失败");
+            return false;
         }
     }
 
@@ -101,8 +125,9 @@ public class FileUtils {
      * 递归复制文件夹
      * @param dirFromPath 复制文件夹的路径
      * @param dirToPath   目标文件夹的路径
+     * @return  返回成功与否
      */
-    public static void copyDir(String dirFromPath,String dirToPath){
+    public static boolean copyDir(String dirFromPath,String dirToPath){
         File dirFrom=new File(dirFromPath);
         File dirTo=new File(dirToPath);
         if(!dirTo.isDirectory()){
@@ -110,17 +135,51 @@ public class FileUtils {
         }
         if(!dirFrom.isDirectory()){
             System.out.println(dirFromPath+"文件夹不存在");
-            return;
+            return false;
         }
         File[] files=dirFrom.listFiles();
         for (File fileFlag:files){
             if(fileFlag.isDirectory()){
-                copyDir(fileFlag.getAbsolutePath(), dirFromPath+"/"+fileFlag.getName());
+                if(!copyDir(fileFlag.getAbsolutePath(), dirFromPath+"/"+fileFlag.getName())){
+                   return false;
+                }
             }else {
-                copyFile(fileFlag.getAbsolutePath(),dirFromPath+"/"+fileFlag.getName());
+                if(!copyFile(fileFlag.getAbsolutePath(),dirFromPath+"/"+fileFlag.getName())){
+                    return false;
+                }
             }
+        }
+        return true;
+    }
+
+    public static boolean moveFile(String fileFromPath,String fileToPath){
+        if(copyFile(fileFromPath,fileToPath)){
+            if(deleteFile(fileFromPath)){
+                return true;
+            }else {
+                System.out.println("删除文件"+fileFromPath+"失败");
+                deleteFile(fileToPath);
+                return false;
+            }
+
+        }else {
+            System.out.println("移动文件"+fileFromPath+"失败");
+            return false;
         }
     }
 
+    public static boolean moveDir(String dirFromPath,String dirToPath){
+        if(copyDir(dirFromPath,dirToPath)){
+            if(deleteDir(dirFromPath)){
+                return true;
+            }else {
+                System.out.println("删除文件夹"+dirFromPath+"失败");
+                deleteDir(dirToPath);
+                return false;
+            }
+        }
+        System.out.println("移动文件夹"+dirFromPath+"失败");
+        return false;
+    }
 
 }
