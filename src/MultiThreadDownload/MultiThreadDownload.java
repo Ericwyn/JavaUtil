@@ -1,4 +1,4 @@
-/**
+package MultiThreadDownload; /**
  *
  * Created by Ericwyn on 17-7-3.
  */
