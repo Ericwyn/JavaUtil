@@ -7,6 +7,8 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 
 /**
@@ -14,6 +16,7 @@ import java.util.HashMap;
  * Created by Ericwyn on 17-7-15.
  */
 public class ConfigGet {
+    private static SimpleDateFormat sdf=new SimpleDateFormat("yy-MM-dd HH:mm:ss");
     //配置文件
     private File configFile;
     //配置的configMap
@@ -136,11 +139,12 @@ public class ConfigGet {
         File errorFile=new File("ConfigGet_error.log");
         try {
             BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(errorFile,true));
-            bufferedWriter.write(e.toString());
+            bufferedWriter.write(sdf.format(new Date())+":"+e.toString());
+            bufferedWriter.newLine();
             bufferedWriter.flush();
             bufferedWriter.close();
         }catch (IOException ioe){
-            e.printStackTrace();
+            ioe.printStackTrace();
         }
     }
 }
