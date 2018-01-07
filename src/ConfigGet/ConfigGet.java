@@ -8,6 +8,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 
@@ -24,45 +25,35 @@ public class ConfigGet {
     //配置文件是否存在
     private boolean haveConfig=false;
     //是否依据默认值自动生成配置文件
-    private boolean createConfigFile=false;
-    //配置文件最后 一行是否为空行
+    private boolean autoCreateConfig=false;
 
     public ConfigGet(File configFile){
         this.configFile=configFile;
-        readAllConfig();
+        configMap=getConfigMap();
+    }
+
+    public ConfigGet(File configFile,boolean autoCreateConfig){
+        this.configFile=configFile;
+        this.autoCreateConfig=autoCreateConfig;
+        configMap=getConfigMap();
+    }
+
+    public ConfigGet(String configFilePath,boolean autoCreateConfig){
+        this.configFile=new File(configFilePath);
+        this.autoCreateConfig=autoCreateConfig;
+        configMap=getConfigMap();
     }
 
     /**
-     * 是否新建一个配置文件
-     * @param configFile
-     * @param createConfigFile  是否按照读取到的默认内容，新建一个固定配置文件
+     * 获取所有的配置项目
+     * @return
      */
-    public ConfigGet(File configFile,boolean createConfigFile){
-        this(configFile);
-        this.createConfigFile=createConfigFile;
-    }
-
-    public ConfigGet(String configFilePath){
-        this(new File(configFilePath));
-    }
-
-    /**
-     * 是否新建一个配置文件
-     * @param configFilePath
-     * @param createConfigFile  是否按照读取到的默认内容，新建一个固定的配置文件
-     */
-    public ConfigGet(String configFilePath,boolean createConfigFile){
-        this(new File(configFilePath));
-        this.createConfigFile=createConfigFile;
-    }
-
-    private void readAllConfig(){
-        this.configMap=new HashMap<>();
+    private HashMap<String ,String> getConfigMap(){
+        HashMap<String ,String > configMapTemp=new HashMap<>();
         try {
             BufferedReader bufferedReader=new BufferedReader(new FileReader(configFile));
             String line=null;
             while ((line=bufferedReader.readLine())!=null){
-
                 line=line.trim().replaceAll(" ","");
                 if(!line.startsWith(";")){
                     if(line.contains(";")){
@@ -75,34 +66,147 @@ public class ConfigGet {
                         String[] temps=line.split("=");
                         if(temps[0]!=null && temps[1]!=null
                                 && !temps[0].equals("") && !temps[1].equals("")){
-                            configMap.put(temps[0],temps[1]);
+                            configMapTemp.put(temps[0],temps[1]);
                         }
                     }
                 }
             }
-            haveConfig=true;
             bufferedReader.close();
+            haveConfig=true;
+            return configMapTemp;
         }catch (FileNotFoundException e){
-            haveConfig=false;
+            return null;
         }catch (IOException e){
             errorFileOupFile(e);
+            return null;
         }
     }
 
     /**
-     * 获取配置文件里面配置的值
-     * @param defaultValue  默认返回的值（在没有配置文件或者配置文件当中没有这个值的情况下）
-     * @param valueKey  配置项的名称
-     * @return  返回配置的值，以Stirng的形式
+     * 共用的getValue方法，对用户开放
+     * @param defaultValue  默认的value，当key不存在的时候返回该值
+     * @param valueKey key
+     * @return
      */
-    public String getValue(String defaultValue,String valueKey){
+    public String getValue(String valueKey,String defaultValue){
+        String value=null;
+        if((value=getValue(valueKey))!=null){
+            return value;
+        }else {
+            if(autoCreateConfig){
+                writeVale(valueKey,defaultValue);
+                return defaultValue;
+            }else {
+                return defaultValue;
+            }
+        }
+    }
+
+    /**
+     * 私有的getValue方法
+     * @param valueKey
+     * @return
+     */
+    private String getValue(String valueKey){
         if(haveConfig && configMap.get(valueKey)!=null){
             return configMap.get(valueKey);
         }else {
-            if(createConfigFile){
-                writeVale(valueKey,defaultValue);
+            return null;
+        }
+    }
+
+    private ArrayList<String> readConfFile(){
+        try {
+            BufferedReader bufferedReader=new BufferedReader(new FileReader(configFile));
+            String line=null;
+            ArrayList<String> oldConfList=new ArrayList<>();
+            while ((line=bufferedReader.readLine())!=null){
+                oldConfList.add(line);
             }
-            return defaultValue;
+            bufferedReader.close();
+            return oldConfList;
+        }catch (IOException e){
+            errorFileOupFile(e);
+            return null;
+        }
+    }
+
+    /**
+     * 更改配置
+     * @param key 需要更改的key
+     * @return
+     */
+    public boolean updateValue(String key,String newValue){
+        if(!haveConfig || getValue(key)==null){
+            return false;
+        }
+        try {
+            ArrayList<String> oldConfList=readConfFile();
+            if(oldConfList!=null){
+                BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(configFile));
+                for (String strTemp:oldConfList){
+                    if(!strTemp.trim().replace(" ","").contains(key+"=")){
+                        bufferedWriter.write(strTemp);
+                        bufferedWriter.newLine();
+                        bufferedWriter.flush();
+                    }else {
+                        String newValueLine = key+" = "+newValue;
+                        if(strTemp.contains(";")){
+                            String[] temps=strTemp.split(";");
+                            for (int i=1;i<temps.length;i++){
+                                newValueLine = newValueLine + ";"+temps[i];
+                            }
+                        }
+                        bufferedWriter.write(newValueLine);
+                        bufferedWriter.newLine();
+                        bufferedWriter.flush();
+                    }
+                }
+                bufferedWriter.close();
+                configMap=getConfigMap();
+                return true;
+            }else {
+                return false;
+            }
+        }catch (IOException e){
+            errorFileOupFile(e);
+            return false;
+        }
+    }
+
+    /**
+     * 删
+     * @param keys
+     * @return
+     */
+    public boolean deleteValue(String... keys){
+        try {
+            ArrayList<String> oldConfList=readConfFile();
+            if(oldConfList!=null){
+                BufferedWriter bufferedWriter=new BufferedWriter(new FileWriter(configFile));
+                for (String strTemp:oldConfList){
+                    boolean haveDeleteKey=false;
+                    for (String keyTemp:keys){
+                        if(strTemp.trim().replace(" ","").contains(keyTemp+"=")){
+                            haveDeleteKey=true;
+                            break;
+                        }
+                    }
+                    if(!haveDeleteKey){
+                        bufferedWriter.write(strTemp);
+                        bufferedWriter.newLine();
+                        bufferedWriter.flush();
+                    }
+                }
+                bufferedWriter.close();
+                configMap=getConfigMap();
+                return true;
+            }else {
+                return false;
+            }
+        }catch (IOException e){
+            errorFileOupFile(e);
+            return false;
         }
     }
 
@@ -125,7 +229,7 @@ public class ConfigGet {
             bufferedWriter.write(key+" = "+value +" ; auto create by ConfigGet");
             bufferedWriter.newLine();
             bufferedWriter.close();
-            readAllConfig();
+            configMap=getConfigMap();
         }catch (IOException e){
             errorFileOupFile(e);
         }

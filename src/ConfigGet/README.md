@@ -15,12 +15,22 @@ ConfigGet是一个简单的配置文件读取工具，因为之前的项目当�
     private static ConfigGet configGet = new ConfigGet("burano.cfg");
     //获取配置文件项中 SCORE_YEAR 的值
     //没有这个值或者不存在配置文件的话就直接使用 "2016-2017" 
-    private static final String value = configGet.getValue("2016-2017","SCORE_YEAR");
+    private static final String value = configGet.getValue("SCORE_YEAR","2016-2017");
 
 ### 自动生成配置文件
 ConfigGet能够根据代码中设置的默认返回值，自动生成配置文件，方便下一次启动当中使用。只需要再Config对象新建时候传入一个`true`参数就可以了
     
     private static ConfigGet configGet = new ConfigGet("burano.cfg",true);
+
+### 更新配置项
+
+    config.updateValue("KEY","NEW_VALUE");
+    
+### 删除配置项
+
+    config.deleteValue("KEY1");
+    config.deleteValue("KEY2","KEY3","KEY4");
+
 
 ### 错误日志
 在ConfigGet无法使用的时候，将会有error的日志文件输出为`ConfigGet_error.log`
